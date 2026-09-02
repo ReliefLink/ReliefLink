@@ -1,0 +1,1 @@
+import { openNativeSMS } from '../../utils/smsGateway.js';

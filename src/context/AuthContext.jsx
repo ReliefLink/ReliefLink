@@ -18,10 +18,22 @@ export const AuthProvider = ({ children }) => {
     return () => unsub();
   }, []);
 
-  const login = async (name, phone, password, role) => {
+  const signIn = async (phone, password, role) => {
     setLoading(true);
     try {
-      const { user, role: assignedRole } = await authService.loginUser(name, phone, password, role);
+      const { user, role: assignedRole } = await authService.loginUser(phone, password, role);
+      setCurrentUser(user);
+      setUserRole(assignedRole);
+      return { user, role: assignedRole };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (userData) => {
+    setLoading(true);
+    try {
+      const { user, role: assignedRole } = await authService.registerUser(userData);
       setCurrentUser(user);
       setUserRole(assignedRole);
       return { user, role: assignedRole };
@@ -37,7 +49,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, login, logout, loading }}>
+    <AuthContext.Provider value={{ currentUser, userRole, signIn, signUp, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
