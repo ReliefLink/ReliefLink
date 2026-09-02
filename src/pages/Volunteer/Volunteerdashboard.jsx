@@ -22,7 +22,19 @@ import {
   Phone, 
   AlertTriangle 
 } from 'lucide-react';
+// Person 1 imports DisasterMap:
+import DisasterMap from '../../maps/DisasterMap.jsx';
 
+// Inside Volunteer Task View JSX (when a task is assigned):
+{currentTask && (
+  <div className="my-4 rounded-lg overflow-hidden border">
+    <DisasterMap
+      role="volunteer"
+      requests={[currentTask]} // Only passes the assigned task!
+      height="300px"
+    />
+  </div>
+)}
 export default function VolunteerDashboard() {
   const { currentUser } = useAuth();
   const [profile, setProfile] = useState(null);
