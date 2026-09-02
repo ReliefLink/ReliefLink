@@ -9,7 +9,19 @@ import StatusBadge from '../../components/StatusBadge';
 import ResourceCard from '../../components/ResourceCard';
 import Modal from '../../components/Modal';
 import { ShieldAlert, Users, HeartHandshake, Tent, Package, Radio, Plus, Check, X, Megaphone, Flame } from 'lucide-react';
+// Person 1 imports your DisasterMap
+import DisasterMap from '../../maps/DisasterMap.jsx';
 
+// Inside Admin Dashboard JSX:
+<DisasterMap
+  role="admin"
+  affectedArea={currentDisaster.affectedArea}
+  redZones={activeRedZones}
+  requests={allRequests}
+  reliefCamps={allReliefCamps}
+  volunteers={allVolunteers} // Admin sees volunteer GPS markers!
+  height="500px"
+/>
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [disaster, setDisaster] = useState(null);
