@@ -1,0 +1,461 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data.role;
+    }
+
+    function isRole(role) {
+      return isSignedIn() && userRole() == role;
+    }
+
+    function isAdmin() {
+      return isRole("admin");
+    }
+
+    function isCitizen() {
+      return isRole("citizen");
+    }
+
+    function isVolunteer() {
+      return isRole("volunteer");
+    }
+
+    function isNdrf() {
+      return isRole("ndrf");
+    }
+
+
+    // ========================================
+    // USERS
+    // ========================================
+
+    match /users/{userId} {
+
+      // User can read their own profile.
+      // Admin can read user profiles.
+      allow get: if
+        isSignedIn()
+        && (
+          request.auth.uid == userId
+          || isAdmin()
+        );
+
+      // New accounts can only be created as citizens.
+      allow create: if
+        isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.id ==
+           request.auth.uid
+        && request.resource.data.role ==
+           "citizen";
+
+      // User can update their own profile,
+      // but cannot change their role.
+      allow update: if
+        isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.id ==
+           resource.data.id
+        && request.resource.data.role ==
+           resource.data.role;
+
+      // Admin can update users, including roles.
+      allow update: if isAdmin();
+
+      // Only admin can list all users.
+      allow list: if isAdmin();
+
+      allow delete: if false;
+    }
+
+
+    // ========================================
+    // REQUESTS
+    // ========================================
+
+    match /requests/{requestId} {
+
+      // ----------------------------------------
+      // CITIZEN CREATES REQUEST
+      // ----------------------------------------
+
+      allow create: if
+        isCitizen()
+        && request.resource.data.reporterId ==
+           request.auth.uid
+        && request.resource.data.status ==
+           "pending"
+        && request.resource.data.assignedVolunteerId ==
+           null
+        && request.resource.data.assignedNdrfTeamId ==
+           null;
+
+
+      // ----------------------------------------
+      // ADMIN ACCESS
+      // ----------------------------------------
+
+      allow get, list: if isAdmin();
+
+
+      // ----------------------------------------
+      // CITIZEN ACCESS
+      // ----------------------------------------
+
+      // Citizen can only read their own request.
+      allow get: if
+        isCitizen()
+        && resource.data.reporterId ==
+           request.auth.uid;
+
+      // Citizen can only list their own requests.
+      allow list: if
+        isCitizen()
+        && resource.data.reporterId ==
+           request.auth.uid;
+
+
+      // ----------------------------------------
+      // VOLUNTEER ACCESS
+      // ----------------------------------------
+
+      // Volunteer can only read requests assigned
+      // to their volunteer profile.
+      allow get: if
+        isVolunteer()
+        && resource.data.assignedVolunteerId != null
+        && get(
+          /databases/$(database)/documents/volunteers/$(resource.data.assignedVolunteerId)
+        ).data.userId ==
+           request.auth.uid;
+
+      // Volunteer can only list their assigned requests.
+      allow list: if
+        isVolunteer()
+        && resource.data.assignedVolunteerId != null
+        && get(
+          /databases/$(database)/documents/volunteers/$(resource.data.assignedVolunteerId)
+        ).data.userId ==
+           request.auth.uid;
+
+
+      // ----------------------------------------
+      // NDRF ACCESS
+      // ----------------------------------------
+
+      // NDRF can only read requests assigned
+      // to their own NDRF team.
+      allow get: if
+        isNdrf()
+        && resource.data.assignedNdrfTeamId != null
+        && get(
+          /databases/$(database)/documents/ndrfTeams/$(resource.data.assignedNdrfTeamId)
+        ).data.userId ==
+           request.auth.uid;
+
+      // NDRF can only list requests assigned
+      // to their own NDRF team.
+      allow list: if
+        isNdrf()
+        && resource.data.assignedNdrfTeamId != null
+        && get(
+          /databases/$(database)/documents/ndrfTeams/$(resource.data.assignedNdrfTeamId)
+        ).data.userId ==
+           request.auth.uid;
+
+
+      // ----------------------------------------
+      // ADMIN CAN UPDATE ANY REQUEST
+      // ----------------------------------------
+
+      allow update: if isAdmin();
+
+
+      // ----------------------------------------
+      // CITIZEN CAN CANCEL OWN REQUEST
+      // ----------------------------------------
+
+      allow update: if
+        isCitizen()
+        && resource.data.reporterId ==
+           request.auth.uid
+        && request.resource.data.reporterId ==
+           resource.data.reporterId
+        && request.resource.data.status ==
+           "cancelled"
+        && (
+          resource.data.status ==
+             "pending"
+          ||
+          resource.data.status ==
+             "assigned"
+        );
+
+
+      // ----------------------------------------
+      // VOLUNTEER CAN UPDATE ASSIGNED REQUEST
+      // ----------------------------------------
+
+      allow update: if
+        isVolunteer()
+        && resource.data.assignedVolunteerId != null
+        && get(
+          /databases/$(database)/documents/volunteers/$(resource.data.assignedVolunteerId)
+        ).data.userId ==
+           request.auth.uid
+
+        // Cannot change assignment.
+        && request.resource.data.assignedVolunteerId ==
+           resource.data.assignedVolunteerId
+
+        // Cannot change reporter.
+        && request.resource.data.reporterId ==
+           resource.data.reporterId
+
+        // Cannot change disaster.
+        && request.resource.data.disasterId ==
+           resource.data.disasterId
+
+        // Cannot change location.
+        && request.resource.data.location ==
+           resource.data.location
+
+        // Cannot change request type.
+        && request.resource.data.type ==
+           resource.data.type;
+
+
+      // ----------------------------------------
+      // NDRF CAN UPDATE ASSIGNED REQUEST
+      // ----------------------------------------
+
+      allow update: if
+        isNdrf()
+        && resource.data.assignedNdrfTeamId != null
+        && get(
+          /databases/$(database)/documents/ndrfTeams/$(resource.data.assignedNdrfTeamId)
+        ).data.userId ==
+           request.auth.uid
+
+        // Cannot change NDRF assignment.
+        && request.resource.data.assignedNdrfTeamId ==
+           resource.data.assignedNdrfTeamId
+
+        // Cannot change reporter.
+        && request.resource.data.reporterId ==
+           resource.data.reporterId
+
+        // Cannot change disaster.
+        && request.resource.data.disasterId ==
+           resource.data.disasterId
+
+        // Cannot change location.
+        && request.resource.data.location ==
+           resource.data.location
+
+        // Cannot change request type.
+        && request.resource.data.type ==
+           resource.data.type;
+
+
+      // Nobody can delete requests.
+      allow delete: if false;
+    }
+
+
+    // ========================================
+    // DISASTERS
+    // ========================================
+
+    match /disasters/{disasterId} {
+
+      // All authenticated users can see disaster information.
+      allow read: if isSignedIn();
+
+      // Only admin can create/update disasters.
+      allow create, update: if isAdmin();
+
+      allow delete: if false;
+    }
+
+
+    // ========================================
+    // RED ZONES
+    // ========================================
+
+    match /redZones/{redZoneId} {
+
+      // Authenticated users can see red zones.
+      allow read: if isSignedIn();
+
+      // Only admin can create/update red zones.
+      allow create, update: if isAdmin();
+
+      allow delete: if false;
+    }
+
+
+    // ========================================
+    // NDRF TEAMS
+    // ========================================
+
+    match /ndrfTeams/{ndrfTeamId} {
+
+      // Admin has full read/create/update access.
+      allow read, create, update: if isAdmin();
+
+      // NDRF can read only their own team.
+      allow get: if
+        isNdrf()
+        && resource.data.userId ==
+           request.auth.uid;
+
+      // NDRF can list only their own team.
+      allow list: if
+        isNdrf()
+        && resource.data.userId ==
+           request.auth.uid;
+
+      allow delete: if false;
+    }
+
+
+    // ========================================
+    // VOLUNTEERS
+    // ========================================
+
+    match /volunteers/{volunteerId} {
+
+      // Citizen can submit a volunteer application.
+      allow create: if
+        isCitizen()
+        && request.resource.data.userId ==
+           request.auth.uid
+        && request.resource.data.approved ==
+           false
+        && request.resource.data.available ==
+           false;
+
+
+      // Admin can see all volunteer applications.
+      allow get, list: if isAdmin();
+
+
+      // Volunteer can read their own profile.
+      allow get: if
+        isVolunteer()
+        && resource.data.userId ==
+           request.auth.uid;
+
+      // Volunteer can list their own profile.
+      allow list: if
+        isVolunteer()
+        && resource.data.userId ==
+           request.auth.uid;
+
+
+      // Citizen can read their own volunteer application.
+      allow get: if
+        isCitizen()
+        && resource.data.userId ==
+           request.auth.uid;
+
+      // Citizen can list their own volunteer application.
+      allow list: if
+        isCitizen()
+        && resource.data.userId ==
+           request.auth.uid;
+
+
+      // Admin can approve/reject/update volunteers.
+      allow update: if isAdmin();
+
+
+      // Volunteer can update their own information,
+      // but cannot change their userId or approval status.
+      allow update: if
+        isVolunteer()
+        && resource.data.userId ==
+           request.auth.uid
+        && request.resource.data.userId ==
+           resource.data.userId
+        && request.resource.data.approved ==
+           resource.data.approved;
+
+
+      allow delete: if false;
+    }
+
+
+    // ========================================
+    // RELIEF CAMPS
+    // ========================================
+
+    match /reliefCamps/{campId} {
+
+      // Authenticated users can see relief camps.
+      allow read: if isSignedIn();
+
+      // Only admin can create/update.
+      allow create, update: if isAdmin();
+
+      allow delete: if false;
+    }
+
+
+    // ========================================
+    // RESOURCE CAMPS
+    // ========================================
+
+    match /resourceCamps/{resourceCampId} {
+
+      // Authenticated users can see resource camps.
+      allow read: if isSignedIn();
+
+      // Only admin can create/update.
+      allow create, update: if isAdmin();
+
+      allow delete: if false;
+    }
+
+
+    // ========================================
+    // OFFICIAL UPDATES
+    // ========================================
+
+    match /updates/{updateId} {
+
+      // Authenticated users can read official updates.
+      allow read: if isSignedIn();
+
+      // Only admin can publish updates.
+      allow create: if isAdmin();
+
+      allow update, delete: if false;
+    }
+
+
+    // ========================================
+    // DEFAULT DENY
+    // ========================================
+
+    // Anything not explicitly allowed above
+    // is completely blocked.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
