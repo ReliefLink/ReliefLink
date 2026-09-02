@@ -15,8 +15,8 @@
   body {
     margin: 0;
     padding: 0;
-    background-color: #0f172a; /* Slate-900 */
-    color: #f8fafc; /* Slate-50 */
+    background-color: #edcf88; /* Slate-900 */
+    color: #080120; /* Slate-50 */
     min-height: 100vh;
   }
 
@@ -27,16 +27,16 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #0f172a;
+    background: #edcf88;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #fad69b;
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    background: #ffffff;
   }
 }
 
