@@ -6,7 +6,19 @@ import StatusBadge from '../../components/StatusBadge';
 import Modal from '../../components/Modal';
 import { LoadingState, EmptyState } from '../../components/StateFeedback';
 import { Shield, AlertTriangle, FileText, CheckCircle2, PackagePlus, Radio, Users } from 'lucide-react';
+// Person 1 imports DisasterMap:
+import DisasterMap from '../../maps/DisasterMap.jsx';
 
+// Inside NDRF Dashboard JSX:
+<div className="my-6 rounded-lg overflow-hidden border">
+  <DisasterMap
+    role="ndrf"
+    redZones={assignedRedZones || []}
+    requests={ndrfRequests || []}
+    reliefCamps={resourceCamps || []}
+    height="450px"
+  />
+</div>
 export default function NDRFDashboard() {
   const { currentUser } = useAuth();
   const [redZones, setRedZones] = useState([]);
